@@ -2,7 +2,8 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache git ca-certificates tzdata
 COPY . .
-RUN go mod tidy
+RUN go mod init exfil-server || true
+RUN go get -u github.com/valyala/fasthttp
 RUN go build -o exfil-server main.go
 
 FROM scratch
