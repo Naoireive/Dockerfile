@@ -6,9 +6,10 @@ RUN go mod init exfil-server || true
 RUN go mod tidy
 RUN go build -o exfil-server main.go
 
-FROM scratch
+FROM alpine:latest
+WORKDIR /root/
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /app/exfil-server /exfil-server
+COPY --from=builder /app/exfil-server .
 EXPOSE 8080
-ENTRYPOINT ["/exfil-server"]
+ENTRYPOINT ["./exfil-server"]
