@@ -4,7 +4,7 @@ RUN apk add --no-cache git ca-certificates tzdata
 COPY . .
 RUN go mod init exfil-server || true
 RUN go mod tidy
-RUN go build -o exfil-server main.go
+RUN go build -v -o exfil-server main.go
 
 FROM alpine:latest
 WORKDIR /root/
